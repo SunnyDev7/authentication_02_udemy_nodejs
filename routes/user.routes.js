@@ -7,7 +7,28 @@ import { usersTable, userSessions } from "../db/schema.js";
 
 const router = express.Router();
 
-router.get("/"); //show to logged in user
+router.patch("/", async (req, res) => {
+  const user = req.user;
+
+  if (!user) {
+    return res.status(401).json({ error: "Not logged in" });
+  }
+  const { name } = req.body;
+
+  await db.update(usersTable).set({ name }).where(eq(usersTable.id, user.id));
+
+  return res.json({ status: "success" });
+});
+
+router.get("/", async (req, res) => {
+  const user = req.user;
+
+  if (!user) {
+    return res.status(401).json({ error: "Not logged in" });
+  }
+
+  return res.json({ user });
+}); //show to logged in user
 
 router.post("/signup", async function (req, res) {
   const { name, email, password } = req.body;
