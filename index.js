@@ -1,4 +1,5 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 
 import userRouter from "./routes/user.routes.js";
@@ -12,30 +13,53 @@ const PORT = process.env.PORT ?? 8000;
 app.use(express.json());
 
 app.use(async function (req, res, next) {
-  const sessionId = req.headers["session-id"];
+  try {
+    //Header authorization: Bearer <token>
+    const tokenHeader = req.headers["authorization"];
 
-  if (!sessionId) {
-    return next();
+    if (!tokenHeader) {
+      return next();
+    }
+
+    if (!tokenHeader.startsWith("Bearer")) {
+      return res
+        .status(400)
+        .json({ error: "Authoprization header must start with Bearer" });
+    }
+
+    const token = tokenHeader.split(" ")[1];
+
+    const decode = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = decode;
+    next();
+  } catch (err) {
+    next();
   }
 
-  const [data] = await db
-    .select({
-      sessionId: userSessions.id,
-      id: usersTable.id,
-      userId: userSessions.userId,
-      name: usersTable.name,
-      email: usersTable.email,
-    })
-    .from(userSessions)
-    .rightJoin(usersTable, eq(usersTable.id, userSessions.userId))
-    .where((table) => eq(table.sessionId, sessionId));
+  //Session based middleware
+  // if (!sessionId) {
+  //   return next();
+  // }
 
-  if (!data) {
-    return next();
-  }
+  // const [data] = await db
+  //   .select({
+  //     sessionId: userSessions.id,
+  //     id: usersTable.id,
+  //     userId: userSessions.userId,
+  //     name: usersTable.name,
+  //     email: usersTable.email,
+  //   })
+  //   .from(userSessions)
+  //   .rightJoin(usersTable, eq(usersTable.id, userSessions.userId))
+  //   .where((table) => eq(table.sessionId, sessionId));
 
-  req.user = data;
-  next();
+  // if (!data) {
+  //   return next();
+  // }
+
+  // req.user = data;
+  // next();
 });
 
 app.use("/user", userRouter);
