@@ -5,15 +5,11 @@ import jwt from "jsonwebtoken";
 
 import db from "../db/index.js";
 import { usersTable, userSessions } from "../db/schema.js";
+import { ensureAuthenticated } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.patch("/", async (req, res) => {
-  const user = req.user;
-
-  if (!user) {
-    return res.status(401).json({ error: "Not logged in" });
-  }
+router.patch("/", ensureAuthenticated, async (req, res) => {
   const { name } = req.body;
 
   await db.update(usersTable).set({ name }).where(eq(usersTable.id, user.id));
@@ -21,13 +17,7 @@ router.patch("/", async (req, res) => {
   return res.json({ status: "success" });
 });
 
-router.get("/", async (req, res) => {
-  const user = req.user;
-
-  if (!user) {
-    return res.status(401).json({ error: "Not logged in" });
-  }
-
+router.get("/", ensureAuthenticated, async (req, res) => {
   return res.json({ user });
 }); //show to logged in user
 
@@ -74,6 +64,7 @@ router.post("/login", async function (req, res) {
       name: usersTable.name,
       email: usersTable.email,
       salt: usersTable.salt,
+      role: usersTable.role,
       password: usersTable.password,
     })
     .from(usersTable)
@@ -106,9 +97,10 @@ router.post("/login", async function (req, res) {
     id: existingUser.id,
     email: existingUser.email,
     name: existingUser.name,
+    role: existingUser.role,
   };
 
-  const token = jwt.sign(payload, process.env.JWT_SECRET, {expiresIn: "1m"});
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1m" });
 
   return res.json({ status: "success!", token });
 });
